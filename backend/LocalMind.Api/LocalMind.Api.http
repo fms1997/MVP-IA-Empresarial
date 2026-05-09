@@ -1,0 +1,6 @@
+@LocalMind.Api_HostAddress = http://localhost:5201
+
+GET {{LocalMind.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
