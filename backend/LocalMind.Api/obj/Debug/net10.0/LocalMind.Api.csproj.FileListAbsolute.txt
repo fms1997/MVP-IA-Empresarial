@@ -6,6 +6,7 @@ C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind
 C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\obj\Debug\net10.0\LocalMind.Api.csproj.CoreCompileInputs.cache
 C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\obj\Debug\net10.0\LocalMind.Api.MvcApplicationPartsAssemblyInfo.cs
 C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\obj\Debug\net10.0\LocalMind.Api.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\obj\Debug\net10.0\LocalMind.Api.sourcelink.json
 C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\bin\Debug\net10.0\appsettings.Development.json
 C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\bin\Debug\net10.0\appsettings.json
 C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\bin\Debug\net10.0\LocalMind.Api.staticwebassets.endpoints.json
@@ -52,6 +53,11 @@ C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind
 C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\bin\Debug\net10.0\System.Composition.Runtime.dll
 C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\bin\Debug\net10.0\System.Composition.TypedParts.dll
 C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\bin\Debug\net10.0\System.IdentityModel.Tokens.Jwt.dll
+C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\bin\Debug\net10.0\UglyToad.PdfPig.dll
+C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\bin\Debug\net10.0\UglyToad.PdfPig.Core.dll
+C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\bin\Debug\net10.0\UglyToad.PdfPig.Fonts.dll
+C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\bin\Debug\net10.0\UglyToad.PdfPig.Tokenization.dll
+C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\bin\Debug\net10.0\UglyToad.PdfPig.Tokens.dll
 C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\bin\Debug\net10.0\cs\Microsoft.CodeAnalysis.resources.dll
 C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\bin\Debug\net10.0\de\Microsoft.CodeAnalysis.resources.dll
 C:\Users\Franc\Desktop\ProyectoMVPDesarrolloConIA\localmind-ai\backend\LocalMind.Api\bin\Debug\net10.0\es\Microsoft.CodeAnalysis.resources.dll

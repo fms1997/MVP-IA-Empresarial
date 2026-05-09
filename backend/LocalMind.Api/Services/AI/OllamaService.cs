@@ -28,9 +28,9 @@ public class OllamaService : IOllamaService
             model,
             messages = new[]
             {
-           new { role = "system", content = systemPrompt },
+                new { role = "system", content = systemPrompt },
                 new { role = "user", content = userMessage }
-        },
+            },
             stream = false
         };
 
@@ -57,16 +57,14 @@ public class OllamaService : IOllamaService
         }
         catch (Exception ex)
         {
-            
-
             return $"Error al conectar con Ollama: {ex.Message}";
         }
     }
-}
 
- public async Task<IReadOnlyList<float>> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<float>> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
     {
         var model = _configuration["Ollama:EmbeddingModel"] ?? "nomic-embed-text";
+
         var payload = new
         {
             model,
@@ -74,10 +72,12 @@ public class OllamaService : IOllamaService
         };
 
         var json = JsonSerializer.Serialize(payload);
+
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         var response = await _httpClient.PostAsync("/api/embed", content, cancellationToken);
         var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+
         response.EnsureSuccessStatusCode();
 
         using var document = JsonDocument.Parse(responseJson);
@@ -85,12 +85,18 @@ public class OllamaService : IOllamaService
 
         if (root.TryGetProperty("embeddings", out var embeddingsElement) && embeddingsElement.GetArrayLength() > 0)
         {
-            return embeddingsElement[0].EnumerateArray().Select(value => value.GetSingle()).ToArray();
+            return embeddingsElement[0]
+                .EnumerateArray()
+                .Select(value => value.GetSingle())
+                .ToArray();
         }
 
         if (root.TryGetProperty("embedding", out var embeddingElement))
         {
-            return embeddingElement.EnumerateArray().Select(value => value.GetSingle()).ToArray();
+            return embeddingElement
+                .EnumerateArray()
+                .Select(value => value.GetSingle())
+                .ToArray();
         }
 
         throw new InvalidOperationException("Ollama no devolvió embeddings válidos.");
