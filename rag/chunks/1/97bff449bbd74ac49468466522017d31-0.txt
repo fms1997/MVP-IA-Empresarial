@@ -1,0 +1,1 @@
+LocalMind AI es un asistente local de conocimiento. La Etapa 3 del MVP implementa RAG con subida de documentos. El pipeline de RAG incluye extracción de texto, división en chunks, generación de embeddings locales y búsqueda por similitud. El modelo de embeddings usado para esta prueba es nomic-embed-text. La respuesta final debe citar fuentes con nombre de archivo y chunk usado.

@@ -32,14 +32,15 @@ public class ChatController : ControllerBase
 
         Conversation conversation;
 
-        if (request.ConversationId is null)
+        if (request.ConversationId is null || request.ConversationId <= 0)
         {
             conversation = new Conversation
             {
                 UserId = userId,
                 Title = request.Message.Length > 40
                     ? request.Message[..40]
-                    : request.Message
+                    : request.Message,
+                CreatedAt = DateTime.UtcNow
             };
 
             _context.Conversations.Add(conversation);
@@ -48,26 +49,38 @@ public class ChatController : ControllerBase
         else
         {
             conversation = await _context.Conversations
-                .FirstAsync(x => x.Id == request.ConversationId && x.UserId == userId);
+                .FirstOrDefaultAsync(x =>
+                    x.Id == request.ConversationId &&
+                    x.UserId == userId
+                );
+
+            if (conversation is null)
+            {
+                return NotFound(new
+                {
+                    message = "No se encontró la conversación."
+                });
+            }
         }
 
         var userMessage = new ChatMessage
         {
             ConversationId = conversation.Id,
             Role = "user",
-            Content = request.Message
+            Content = request.Message,
+            CreatedAt = DateTime.UtcNow
         };
 
         _context.ChatMessages.Add(userMessage);
 
-        //var assistantResponse = await _chatService.GenerateResponseAsync(request.Message);
         var chatResult = await _chatService.GenerateResponseAsync(userId, request.Message);
+
         var assistantMessage = new ChatMessage
         {
             ConversationId = conversation.Id,
             Role = "assistant",
-            //Content = assistantResponse
-            Content = chatResult.Response
+            Content = chatResult.Response,
+            CreatedAt = DateTime.UtcNow
         };
 
         _context.ChatMessages.Add(assistantMessage);
@@ -77,7 +90,6 @@ public class ChatController : ControllerBase
         return Ok(new
         {
             conversationId = conversation.Id,
-            //response = assistantResponse
             response = chatResult.Response,
             usedRag = chatResult.UsedRag,
             chunksUsed = chatResult.ChunksUsed,

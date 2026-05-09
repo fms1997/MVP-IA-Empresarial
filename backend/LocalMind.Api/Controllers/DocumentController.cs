@@ -18,8 +18,9 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpPost("upload")]
+    [Consumes("multipart/form-data")]
     [RequestSizeLimit(10 * 1024 * 1024)]
-    public async Task<IActionResult> Upload([FromForm] IFormFile file, CancellationToken cancellationToken)
+    public async Task<IActionResult> Upload(IFormFile file, CancellationToken cancellationToken)
     {
         if (file is null)
         {
