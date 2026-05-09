@@ -14,7 +14,12 @@ public class OllamaService : IOllamaService
         _configuration = configuration;
     }
 
-    public async Task<string> SendMessageAsync(string message)
+    public Task<string> SendMessageAsync(string message, CancellationToken cancellationToken = default)
+    {
+        return SendMessageAsync("Respondé siempre en español.", message, cancellationToken);
+    }
+
+    public async Task<string> SendMessageAsync(string systemPrompt, string userMessage, CancellationToken cancellationToken = default)
     {
         var model = _configuration["Ollama:Model"] ?? "qwen2.5-coder:7b";
 
@@ -23,8 +28,8 @@ public class OllamaService : IOllamaService
             model,
             messages = new[]
             {
-            new { role = "system", content = "Respondé siempre en español." },
-            new { role = "user", content = message }
+           new { role = "system", content = systemPrompt },
+                new { role = "user", content = userMessage }
         },
             stream = false
         };
@@ -38,11 +43,8 @@ public class OllamaService : IOllamaService
 
         try
         {
-            var response = await _httpClient.PostAsync("/api/chat", content);
-            var responseJson = await response.Content.ReadAsStringAsync();
-
-            Console.WriteLine("Respuesta Ollama:");
-            Console.WriteLine(responseJson);
+            var response = await _httpClient.PostAsync("/api/chat", content, cancellationToken);
+            var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
 
             response.EnsureSuccessStatusCode();
 
@@ -55,10 +57,42 @@ public class OllamaService : IOllamaService
         }
         catch (Exception ex)
         {
-            Console.WriteLine("ERROR OLLAMA:");
-            Console.WriteLine(ex.ToString());
+            
 
             return $"Error al conectar con Ollama: {ex.Message}";
         }
+    }
+}
+
+ public async Task<IReadOnlyList<float>> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
+    {
+        var model = _configuration["Ollama:EmbeddingModel"] ?? "nomic-embed-text";
+        var payload = new
+        {
+            model,
+            input = text
+        };
+
+        var json = JsonSerializer.Serialize(payload);
+        using var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await _httpClient.PostAsync("/api/embed", content, cancellationToken);
+        var responseJson = await response.Content.ReadAsStringAsync(cancellationToken);
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(responseJson);
+        var root = document.RootElement;
+
+        if (root.TryGetProperty("embeddings", out var embeddingsElement) && embeddingsElement.GetArrayLength() > 0)
+        {
+            return embeddingsElement[0].EnumerateArray().Select(value => value.GetSingle()).ToArray();
+        }
+
+        if (root.TryGetProperty("embedding", out var embeddingElement))
+        {
+            return embeddingElement.EnumerateArray().Select(value => value.GetSingle()).ToArray();
+        }
+
+        throw new InvalidOperationException("Ollama no devolvió embeddings válidos.");
     }
 }

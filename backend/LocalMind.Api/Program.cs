@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using LocalMind.Api.Services.Ai;
+using LocalMind.Api.Services.Rag;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
@@ -19,6 +20,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.Configure<RagOptions>(builder.Configuration.GetSection("Rag"));
+builder.Services.AddScoped<IRagService, RagService>();
+builder.Services.AddScoped<IDocumentTextExtractor, DocumentTextExtractor>();
+builder.Services.AddScoped<ITextChunker, TextChunker>();
+builder.Services.AddScoped<IEmbeddingSerializer, EmbeddingSerializer>();
 builder.Services.AddHttpClient<IOllamaService, OllamaService>(client =>
 {
     client.BaseAddress = new Uri(

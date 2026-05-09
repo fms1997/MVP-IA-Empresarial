@@ -60,13 +60,14 @@ public class ChatController : ControllerBase
 
         _context.ChatMessages.Add(userMessage);
 
-        var assistantResponse = await _chatService.GenerateResponseAsync(request.Message);
-
+        //var assistantResponse = await _chatService.GenerateResponseAsync(request.Message);
+        var chatResult = await _chatService.GenerateResponseAsync(userId, request.Message);
         var assistantMessage = new ChatMessage
         {
             ConversationId = conversation.Id,
             Role = "assistant",
-            Content = assistantResponse
+            //Content = assistantResponse
+            Content = chatResult.Response
         };
 
         _context.ChatMessages.Add(assistantMessage);
@@ -76,7 +77,11 @@ public class ChatController : ControllerBase
         return Ok(new
         {
             conversationId = conversation.Id,
-            response = assistantResponse
+            //response = assistantResponse
+            response = chatResult.Response,
+            usedRag = chatResult.UsedRag,
+            chunksUsed = chatResult.ChunksUsed,
+            sources = chatResult.Sources
         });
     }
 

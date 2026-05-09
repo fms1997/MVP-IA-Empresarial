@@ -2,5 +2,5 @@ namespace LocalMind.Api.Services.Chat;
 
 public interface IChatService
 {
-    Task<string> GenerateResponseAsync(string message);
+    Task<ChatResult> GenerateResponseAsync(int userId, string message, CancellationToken cancellationToken = default);
 }

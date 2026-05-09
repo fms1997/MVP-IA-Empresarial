@@ -15,11 +15,19 @@ export const getConversation = async (
 
   return response.data;
 };
+export interface RagSource {
+  documentId: number;
+  fileName: string;
+  chunkIndex: number;
+  score: number;
+  preview: string;
+}
 
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   createdAt?: string;
+    sources?: RagSource[];
 }
 
 export interface SendMessageRequest {
@@ -30,6 +38,9 @@ export interface SendMessageRequest {
 export interface SendMessageResponse {
   conversationId: number;
   response: string;
+   usedRag: boolean;
+  chunksUsed: number;
+  sources: RagSource[];
 }
 
 export interface ConversationHistoryItem {

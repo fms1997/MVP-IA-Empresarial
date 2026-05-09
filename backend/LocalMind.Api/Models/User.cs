@@ -11,4 +11,5 @@ public class User
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public List<Conversation> Conversations { get; set; } = new();
+    public List<Document> Documents { get; set; } = new();
 }
