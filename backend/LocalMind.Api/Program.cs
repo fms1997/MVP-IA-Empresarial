@@ -108,6 +108,16 @@ builder.Services
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+var applyMigrationsOnStartup = !bool.TryParse(
+    app.Configuration["Database:ApplyMigrationsOnStartup"],
+    out var shouldApplyMigrations) || shouldApplyMigrations;
+
+if (applyMigrationsOnStartup)
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    dbContext.Database.Migrate();
+}
 
 if (app.Environment.IsDevelopment())
 {

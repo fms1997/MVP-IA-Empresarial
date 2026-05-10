@@ -24,19 +24,22 @@ public class ChatController : ControllerBase
     private readonly IMetricsService _metricsService;
     private readonly IInputSafetyService _inputSafetyService;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<ChatController> _logger;
 
     public ChatController(
         AppDbContext context,
         IChatService chatService,
         IMetricsService metricsService,
         IInputSafetyService inputSafetyService,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ILogger<ChatController> logger)
     {
         _context = context;
         _chatService = chatService;
         _metricsService = metricsService;
         _inputSafetyService = inputSafetyService;
         _configuration = configuration;
+        _logger = logger;
     }
 
     [HttpPost("send")]
@@ -226,20 +229,29 @@ public class ChatController : ControllerBase
         string? error,
         CancellationToken cancellationToken)
     {
-        await _metricsService.RecordAsync(new ChatMetricCreate
+        try
         {
-            UserId = userId,
-            ConversationId = conversationId,
-            ModelUsed = _configuration["Ollama:Model"] ?? "qwen2.5-coder:7b",
-            ResponseTimeMs = elapsedMs,
-            ApproxTokens = EstimateTokens(userMessage, chatResult?.Response),
-            UsedRag = chatResult?.UsedRag ?? false,
-            UsedTool = chatResult?.UsedTool ?? false,
-            ToolName = chatResult?.ToolName,
-            ChunksUsed = chatResult?.ChunksUsed ?? 0,
-            Route = chatResult?.Route ?? "error",
-            Error = error
-        }, cancellationToken);
+            await _metricsService.RecordAsync(new ChatMetricCreate
+            {
+                UserId = userId,
+                ConversationId = conversationId,
+                ModelUsed = _configuration["Ollama:Model"] ?? "qwen2.5-coder:7b",
+                ResponseTimeMs = elapsedMs,
+                ApproxTokens = EstimateTokens(userMessage, chatResult?.Response),
+                UsedRag = chatResult?.UsedRag ?? false,
+                UsedTool = chatResult?.UsedTool ?? false,
+                ToolName = chatResult?.ToolName,
+                ChunksUsed = chatResult?.ChunksUsed ?? 0,
+                Route = chatResult?.Route ?? "error",
+                Error = error
+            }, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "No se pudo registrar la métrica de chat. Ejecutá las migraciones para crear la tabla ChatMetrics.");
+        }
     }
 
     private static object BuildChatResponse(int conversationId, ChatResult chatResult)
