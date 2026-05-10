@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Microsoft.Extensions.Options;
 
 namespace LocalMind.Api.Services.Security;
@@ -23,13 +25,27 @@ public class InputSafetyService : IInputSafetyService
             throw new InvalidOperationException($"El mensaje supera el límite de {_options.MaxMessageLength} caracteres.");
         }
 
-        var normalized = message.Trim().ToLowerInvariant();
+        var normalized = NormalizeForSafetyComparison(message);
         var isBlocked = _options.BlockedPromptPatterns.Any(pattern =>
-            normalized.Contains(pattern.ToLowerInvariant(), StringComparison.Ordinal));
-
+            normalized.Contains(NormalizeForSafetyComparison(pattern), StringComparison.Ordinal));
         if (isBlocked)
         {
             throw new InvalidOperationException("El mensaje fue bloqueado por seguridad básica de prompt injection.");
         }
+    }
+    private static string NormalizeForSafetyComparison(string value)
+    {
+        var normalized = value.Trim().ToLowerInvariant().Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(capacity: normalized.Length);
+
+        foreach (var character in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark)
+            {
+                builder.Append(character);
+            }
+        }
+
+        return builder.ToString().Normalize(NormalizationForm.FormC);
     }
 }

@@ -11,9 +11,46 @@ import {
   uploadDocument,
   type DocumentItem,
 } from "../documents/documentService";
-
+import axios from "axios";
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_FILE_EXTENSIONS = [".pdf", ".txt", ".md"];
+const getChatErrorMessage = (error: unknown) => {
+  if (!axios.isAxiosError(error)) {
+    return "No se pudo conectar con el backend.";
+  }
+
+  if (!error.response) {
+    return "No se pudo conectar con el backend.";
+  }
+
+  const data = error.response.data;
+
+  if (typeof data === "string" && data.trim().length > 0) {
+    return data;
+  }
+
+  if (data && typeof data === "object") {
+    const details = data as {
+      detail?: unknown;
+      message?: unknown;
+      title?: unknown;
+    };
+
+    if (typeof details.detail === "string" && details.detail.trim().length > 0) {
+      return details.detail;
+    }
+
+    if (typeof details.message === "string" && details.message.trim().length > 0) {
+      return details.message;
+    }
+
+    if (typeof details.title === "string" && details.title.trim().length > 0) {
+      return details.title;
+    }
+  }
+
+  return "No se pudo procesar el mensaje.";
+};
 
 function formatFileSize(sizeBytes: number) {
   if (sizeBytes < 1024) return `${sizeBytes} B`;
@@ -174,13 +211,13 @@ export default function ChatPage() {
       await loadHistory();
     } catch (error) {
       console.error("Error enviando mensaje:", error);
-      setChatError("No se pudo conectar con el backend.");
-
+ const errorMessage = getChatErrorMessage(error);
+      setChatError(errorMessage);
       setMessages((previousMessages) => [
         ...previousMessages,
         {
           role: "assistant",
-          content: "Error al conectar con el backend.",
+                   content: errorMessage,
         },
       ]);
     } finally {
