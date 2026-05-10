@@ -9,7 +9,7 @@ LocalMind AI es un MVP full stack de asistente IA local para consultar documento
 - **IA local:** Ollama
 - **Modelo chat:** `qwen2.5-coder:7b`
 - **Embeddings:** `nomic-embed-text`
-- **RAG:** almacenamiento local de documentos, chunks y embeddings serializados
+- **RAG:** Qdrant local opcional en Docker Compose, con fallback local de documentos, chunks y embeddings serializados
 - **DB:** SQLite
 - **Auth:** JWT
 - **Docker:** compose local opcional
@@ -18,7 +18,7 @@ LocalMind AI es un MVP full stack de asistente IA local para consultar documento
 
 1. Registro, login, JWT y rutas protegidas.
 2. Chat con Ollama y guardado de conversaciones.
-3. Upload de PDF/TXT/MD, extracción, chunking, embeddings y respuestas con fuentes.
+3. Upload de PDF/TXT/MD, extracción, chunking, embeddings, búsqueda vectorial local/Qdrant y respuestas con fuentes.
 4. Tools simples: `calculator`, `summarizeText`, `extractTasks`, `generateStudyPlan`.
 5. Orquestación simple entre tool, RAG y chat normal.
 6. Panel de métricas con modelo, latencia, tokens aproximados, uso de RAG/tools, chunks y errores.
@@ -71,6 +71,8 @@ La app queda disponible en `http://localhost:5173`.
 ## Docker local opcional
 
 ```bash
+cp .env.example .env
+# editá JWT_KEY con un valor largo
 docker compose up --build
 ```
 
@@ -80,7 +82,11 @@ Servicios expuestos:
 - Backend: `http://localhost:5201`
 - Ollama: `http://localhost:11434`
 
-> Nota: la primera ejecución puede requerir descargar modelos dentro del contenedor de Ollama o montarlos desde un volumen persistente.
+> Nota: Docker Compose usa `.env` para `JWT_KEY` y el servicio `ollama-init` descarga los modelos automáticamente. Ver comandos completos en `docs/commands.md`.
+
+## Seguridad de configuración
+
+La clave `Jwt__Key` debe tratarse como secreto. En Docker Compose se exige definir `JWT_KEY` en un archivo `.env` local basado en `.env.example`; no uses la clave de ejemplo para despliegues reales.
 
 ## Estructura
 
@@ -94,4 +100,8 @@ docs/                       arquitectura, setup y roadmap
 
 ## Etapa 5 completada
 
-La etapa 5 deja el proyecto presentable como portfolio profesional: métricas visibles, validaciones de seguridad básicas, middleware de errores, documentación de setup/demo y Docker local.
+La etapa 5 deja el proyecto presentable como portfolio profesional: métricas visibles, validaciones de seguridad básicas, middleware de errores, documentación de setup/demo, Docker local y Qdrant opcional para búsqueda vectorial.
+
+## Comandos rápidos
+
+Los comandos de instalación, ejecución local, Qdrant, Docker y checks están centralizados en [`docs/commands.md`](docs/commands.md).

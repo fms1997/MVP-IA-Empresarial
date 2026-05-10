@@ -6,6 +6,23 @@ services:
     volumes:
       - ollama-data:/root/.ollama
 
+  ollama-init:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: >
+      /bin/sh -c "
+      until ollama list >/dev/null 2>&1; do
+        echo 'Esperando Ollama...';
+        sleep 2;
+      done;
+      ollama pull qwen2.5-coder:7b &&
+      ollama pull nomic-embed-text
+      "
+    depends_on:
+      - ollama
+    restart: "no"
+
   backend:
     build:
       context: ./backend/LocalMind.Api
@@ -14,7 +31,7 @@ services:
     environment:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Data Source=/data/localmind.db
-      Jwt__Key: CAMBIAR_ESTA_CLAVE_LOCALMIND_DOCKER_DEMO_2026
+      Jwt__Key: ${JWT_KEY:?Set JWT_KEY in .env before running docker compose}
       Ollama__BaseUrl: http://ollama:11434
       Ollama__Model: qwen2.5-coder:7b
       Ollama__EmbeddingModel: nomic-embed-text
@@ -23,7 +40,8 @@ services:
       - localmind-db:/data
       - ./rag:/rag
     depends_on:
-      - ollama
+      ollama-init:
+        condition: service_completed_successfully
 
   frontend:
     build:
