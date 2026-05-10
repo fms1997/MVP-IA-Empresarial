@@ -12,4 +12,5 @@ public class User
 
     public List<Conversation> Conversations { get; set; } = new();
     public List<Document> Documents { get; set; } = new();
+    public List<ChatMetric> ChatMetrics { get; set; } = new();
 }

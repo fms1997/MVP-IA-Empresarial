@@ -9,10 +9,15 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-
+using LocalMind.Api.Middleware;
+using LocalMind.Api.Services.Metrics;
+using LocalMind.Api.Services.Security;
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add(new Microsoft.AspNetCore.Mvc.RequestSizeLimitAttribute(10 * 1024 * 1024));
+}); 
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(options =>
@@ -21,7 +26,7 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "LocalMind AI API",
         Version = "v1",
-        Description = "API para autenticación, chat local con Ollama y documentos RAG."
+        Description = "API para autenticación, chat local con Ollama, documentos RAG, tools y métricas."
     });
 
     options.AddSecurityDefinition("bearer", new OpenApiSecurityScheme
@@ -56,14 +61,20 @@ builder.Services.AddScoped<IRagService, RagService>();
 builder.Services.AddScoped<IDocumentTextExtractor, DocumentTextExtractor>();
 builder.Services.AddScoped<ITextChunker, TextChunker>();
 builder.Services.AddScoped<IEmbeddingSerializer, EmbeddingSerializer>();
-
+builder.Services.AddScoped<IMetricsService, MetricsService>();
+builder.Services.Configure<ChatSecurityOptions>(builder.Configuration.GetSection("Security:Chat"));
+builder.Services.AddScoped<IInputSafetyService, InputSafetyService>();
 builder.Services.AddHttpClient<IOllamaService, OllamaService>(client =>
 {
     client.BaseAddress = new Uri(
         builder.Configuration["Ollama:BaseUrl"] ?? "http://localhost:11434"
     );
 
-    client.Timeout = TimeSpan.FromMinutes(5);
+    var timeoutSeconds = int.TryParse(builder.Configuration["Ollama:RequestTimeoutSeconds"], out var seconds)
+        ? seconds
+        : 300;
+
+    client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
 });
 
 builder.Services.AddCors(options =>
@@ -103,7 +114,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseCors("Frontend");
 
 app.UseAuthentication();

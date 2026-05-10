@@ -3,6 +3,7 @@ import LoginPage from "../features/auth/LoginPage";
 import RegisterPage from "../features/auth/RegisterPage";
 import ChatPage from "../features/chat/ChatPage";
 import ProtectedRoute from "../components/ProtectedRoute";
+import MetricsPage from "../features/metrics/MetricsPage";
 
 export const router = createBrowserRouter([
   {
@@ -25,4 +26,13 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+    {
+    path: "/metrics",
+    element: (
+      <ProtectedRoute>
+        <MetricsPage />
+      </ProtectedRoute>
+    ),
+  },
+  
 ]);

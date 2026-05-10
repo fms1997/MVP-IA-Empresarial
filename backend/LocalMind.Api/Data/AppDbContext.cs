@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<DocumentChunk> DocumentChunks => Set<DocumentChunk>();
+    public DbSet<ChatMetric> ChatMetrics => Set<ChatMetric>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -31,5 +32,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<DocumentChunk>()
             .HasIndex(chunk => new { chunk.DocumentId, chunk.ChunkIndex });
+        modelBuilder.Entity<ChatMetric>()
+            .HasIndex(metric => new { metric.UserId, metric.CreatedAt });
     }
 }

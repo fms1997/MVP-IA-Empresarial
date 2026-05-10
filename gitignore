@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Frontend build artifacts
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+
+# .NET build artifacts
+bin/
+obj/
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+*.log

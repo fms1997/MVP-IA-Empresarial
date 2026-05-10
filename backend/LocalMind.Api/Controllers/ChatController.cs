@@ -1,8 +1,11 @@
+using System.Diagnostics;
 using System.Security.Claims;
 using LocalMind.Api.Data;
 using LocalMind.Api.DTOs;
 using LocalMind.Api.Models;
 using LocalMind.Api.Services.Chat;
+using LocalMind.Api.Services.Metrics;
+using LocalMind.Api.Services.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,82 +17,236 @@ namespace LocalMind.Api.Controllers;
 [Authorize]
 public class ChatController : ControllerBase
 {
+    private const int ConversationTitleMaxLength = 40;
+
     private readonly AppDbContext _context;
     private readonly IChatService _chatService;
+    private readonly IMetricsService _metricsService;
+    private readonly IInputSafetyService _inputSafetyService;
+    private readonly IConfiguration _configuration;
 
-    public ChatController(AppDbContext context, IChatService chatService)
+    public ChatController(
+        AppDbContext context,
+        IChatService chatService,
+        IMetricsService metricsService,
+        IInputSafetyService inputSafetyService,
+        IConfiguration configuration)
     {
         _context = context;
         _chatService = chatService;
+        _metricsService = metricsService;
+        _inputSafetyService = inputSafetyService;
+        _configuration = configuration;
     }
 
     [HttpPost("send")]
-    public async Task<IActionResult> SendMessage(ChatRequest request)
+    public async Task<IActionResult> SendMessage(
+        ChatRequest request,
+        CancellationToken cancellationToken)
     {
-        var userId = int.Parse(
-            User.FindFirstValue(ClaimTypes.NameIdentifier)!
-        );
+        _inputSafetyService.ValidateChatMessage(request.Message);
 
-        Conversation conversation;
+        var userId = GetUserId();
+        var cleanMessage = request.Message.Trim();
 
-        if (request.ConversationId is null || request.ConversationId <= 0)
+        var conversation = await GetOrCreateConversationAsync(
+            userId,
+            request.ConversationId,
+            cleanMessage,
+            cancellationToken);
+
+        if (conversation is null)
         {
-            conversation = new Conversation
+            return NotFound(new
             {
-                UserId = userId,
-                Title = request.Message.Length > 40
-                    ? request.Message[..40]
-                    : request.Message,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.Conversations.Add(conversation);
-            await _context.SaveChangesAsync();
-        }
-        else
-        {
-            conversation = await _context.Conversations
-                .FirstOrDefaultAsync(x =>
-                    x.Id == request.ConversationId &&
-                    x.UserId == userId
-                );
-
-            if (conversation is null)
-            {
-                return NotFound(new
-                {
-                    message = "No se encontró la conversación."
-                });
-            }
+                message = "No se encontró la conversación."
+            });
         }
 
-        var userMessage = new ChatMessage
+        var stopwatch = Stopwatch.StartNew();
+        ChatResult? chatResult = null;
+
+        try
         {
-            ConversationId = conversation.Id,
-            Role = "user",
-            Content = request.Message,
-            CreatedAt = DateTime.UtcNow
-        };
+            chatResult = await _chatService.GenerateResponseAsync(
+                userId,
+                cleanMessage,
+                cancellationToken);
 
-        _context.ChatMessages.Add(userMessage);
+            await SaveMessagesAsync(
+                conversation.Id,
+                cleanMessage,
+                chatResult.Response,
+                cancellationToken);
 
-        var chatResult = await _chatService.GenerateResponseAsync(userId, request.Message);
+            stopwatch.Stop();
 
-        var assistantMessage = new ChatMessage
+            await RecordMetricAsync(
+                userId,
+                conversation.Id,
+                cleanMessage,
+                chatResult,
+                stopwatch.ElapsedMilliseconds,
+                error: null,
+                cancellationToken);
+
+            return Ok(BuildChatResponse(conversation.Id, chatResult));
+        }
+        catch (Exception ex)
         {
-            ConversationId = conversation.Id,
-            Role = "assistant",
-            Content = chatResult.Response,
-            CreatedAt = DateTime.UtcNow
-        };
+            stopwatch.Stop();
 
-        _context.ChatMessages.Add(assistantMessage);
+            await RecordMetricAsync(
+                userId,
+                conversation.Id,
+                cleanMessage,
+                chatResult,
+                stopwatch.ElapsedMilliseconds,
+                ex.Message,
+                CancellationToken.None);
 
-        await _context.SaveChangesAsync();
+            throw;
+        }
+    }
+
+    [HttpGet("history")]
+    public async Task<IActionResult> GetHistory(CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+
+        var conversations = await _context.Conversations
+            .AsNoTracking()
+            .Where(conversation => conversation.UserId == userId)
+            .OrderByDescending(conversation => conversation.CreatedAt)
+            .Select(conversation => new
+            {
+                conversation.Id,
+                conversation.Title,
+                conversation.CreatedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(conversations);
+    }
+
+    [HttpGet("history/{conversationId:int}")]
+    public async Task<IActionResult> GetConversation(
+        int conversationId,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+
+        var conversation = await _context.Conversations
+            .AsNoTracking()
+            .Include(item => item.Messages)
+            .FirstOrDefaultAsync(
+                item => item.Id == conversationId && item.UserId == userId,
+                cancellationToken);
+
+        if (conversation is null)
+        {
+            return NotFound();
+        }
 
         return Ok(new
         {
-            conversationId = conversation.Id,
+            conversation.Id,
+            conversation.Title,
+            Messages = conversation.Messages
+                .OrderBy(message => message.CreatedAt)
+                .Select(message => new
+                {
+                    message.Role,
+                    message.Content,
+                    message.CreatedAt
+                })
+        });
+    }
+
+    private async Task<Conversation?> GetOrCreateConversationAsync(
+        int userId,
+        int? conversationId,
+        string firstMessage,
+        CancellationToken cancellationToken)
+    {
+        if (conversationId is not null and > 0)
+        {
+            return await _context.Conversations
+                .FirstOrDefaultAsync(
+                    conversation =>
+                        conversation.Id == conversationId &&
+                        conversation.UserId == userId,
+                    cancellationToken);
+        }
+
+        var conversation = new Conversation
+        {
+            UserId = userId,
+            Title = BuildConversationTitle(firstMessage),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Conversations.Add(conversation);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return conversation;
+    }
+
+    private async Task SaveMessagesAsync(
+        int conversationId,
+        string userContent,
+        string assistantContent,
+        CancellationToken cancellationToken)
+    {
+        _context.ChatMessages.AddRange(
+            new ChatMessage
+            {
+                ConversationId = conversationId,
+                Role = "user",
+                Content = userContent,
+                CreatedAt = DateTime.UtcNow
+            },
+            new ChatMessage
+            {
+                ConversationId = conversationId,
+                Role = "assistant",
+                Content = assistantContent,
+                CreatedAt = DateTime.UtcNow
+            });
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task RecordMetricAsync(
+        int userId,
+        int conversationId,
+        string userMessage,
+        ChatResult? chatResult,
+        long elapsedMs,
+        string? error,
+        CancellationToken cancellationToken)
+    {
+        await _metricsService.RecordAsync(new ChatMetricCreate
+        {
+            UserId = userId,
+            ConversationId = conversationId,
+            ModelUsed = _configuration["Ollama:Model"] ?? "qwen2.5-coder:7b",
+            ResponseTimeMs = elapsedMs,
+            ApproxTokens = EstimateTokens(userMessage, chatResult?.Response),
+            UsedRag = chatResult?.UsedRag ?? false,
+            UsedTool = chatResult?.UsedTool ?? false,
+            ToolName = chatResult?.ToolName,
+            ChunksUsed = chatResult?.ChunksUsed ?? 0,
+            Route = chatResult?.Route ?? "error",
+            Error = error
+        }, cancellationToken);
+    }
+
+    private static object BuildChatResponse(int conversationId, ChatResult chatResult)
+    {
+        return new
+        {
+            conversationId,
             response = chatResult.Response,
             usedRag = chatResult.UsedRag,
             usedTool = chatResult.UsedTool,
@@ -97,56 +254,25 @@ public class ChatController : ControllerBase
             route = chatResult.Route,
             chunksUsed = chatResult.ChunksUsed,
             sources = chatResult.Sources
-        });
+        };
     }
 
-    [HttpGet("history")]
-    public async Task<IActionResult> GetHistory()
+    private static string BuildConversationTitle(string message)
     {
-        var userId = int.Parse(
-            User.FindFirstValue(ClaimTypes.NameIdentifier)!
-        );
-
-        var conversations = await _context.Conversations
-            .Where(x => x.UserId == userId)
-            .OrderByDescending(x => x.CreatedAt)
-            .Select(x => new
-            {
-                x.Id,
-                x.Title,
-                x.CreatedAt
-            })
-            .ToListAsync();
-
-        return Ok(conversations);
+        return message.Length > ConversationTitleMaxLength
+            ? message[..ConversationTitleMaxLength]
+            : message;
     }
 
-    [HttpGet("history/{conversationId}")]
-    public async Task<IActionResult> GetConversation(int conversationId)
+    private static int EstimateTokens(string prompt, string? response)
     {
-        var userId = int.Parse(
-            User.FindFirstValue(ClaimTypes.NameIdentifier)!
-        );
+        var totalCharacters = prompt.Length + (response?.Length ?? 0);
 
-        var conversation = await _context.Conversations
-            .Include(x => x.Messages)
-            .FirstOrDefaultAsync(x => x.Id == conversationId && x.UserId == userId);
+        return Math.Max(1, (int)Math.Ceiling(totalCharacters / 4.0));
+    }
 
-        if (conversation is null)
-            return NotFound();
-
-        return Ok(new
-        {
-            conversation.Id,
-            conversation.Title,
-            Messages = conversation.Messages
-                .OrderBy(x => x.CreatedAt)
-                .Select(x => new
-                {
-                    x.Role,
-                    x.Content,
-                    x.CreatedAt
-                })
-        });
+    private int GetUserId()
+    {
+        return int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     }
 }

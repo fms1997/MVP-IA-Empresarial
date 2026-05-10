@@ -1,0 +1,38 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
+  backend:
+    build:
+      context: ./backend/LocalMind.Api
+    ports:
+      - "5201:8080"
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Data Source=/data/localmind.db
+      Jwt__Key: CAMBIAR_ESTA_CLAVE_LOCALMIND_DOCKER_DEMO_2026
+      Ollama__BaseUrl: http://ollama:11434
+      Ollama__Model: qwen2.5-coder:7b
+      Ollama__EmbeddingModel: nomic-embed-text
+      Rag__StorageRoot: /rag
+    volumes:
+      - localmind-db:/data
+      - ./rag:/rag
+    depends_on:
+      - ollama
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  ollama-data:
+  localmind-db:

@@ -15,7 +15,13 @@ public class RagService : IRagService
         ".txt",
         ".md"
     };
-
+    private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "application/pdf",
+        "text/plain",
+        "text/markdown",
+        "application/octet-stream"
+    };
     private readonly AppDbContext _context;
     private readonly IOllamaService _ollamaService;
     private readonly IDocumentTextExtractor _textExtractor;
@@ -51,8 +57,8 @@ public class RagService : IRagService
         Directory.CreateDirectory(chunksPath);
         Directory.CreateDirectory(vectorStorePath);
 
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        var storedFileName = $"{Guid.NewGuid():N}{extension}";
+        var safeOriginalFileName = SanitizeFileName(file.FileName);
+        var extension = Path.GetExtension(safeOriginalFileName).ToLowerInvariant(); var storedFileName = $"{Guid.NewGuid():N}{extension}";
         var storedFilePath = Path.Combine(documentsPath, storedFileName);
 
         await using (var output = File.Create(storedFilePath))
@@ -110,7 +116,7 @@ public class RagService : IRagService
             .Select(document => new DocumentResponse
             {
                 Id = document.Id,
-                OriginalFileName = document.OriginalFileName,
+                OriginalFileName = safeOriginalFileName,
                 SizeBytes = document.SizeBytes,
                 Status = document.Status,
                 ChunkCount = document.Chunks.Count,
@@ -210,11 +216,29 @@ public class RagService : IRagService
             throw new InvalidOperationException($"El archivo supera el límite de {_options.MaxFileSizeBytes / 1024 / 1024} MB.");
         }
 
-        var extension = Path.GetExtension(file.FileName);
+        var safeFileName = SanitizeFileName(file.FileName);
+        var extension = Path.GetExtension(safeFileName);
         if (!AllowedExtensions.Contains(extension))
         {
             throw new InvalidOperationException("Solo se permiten archivos PDF, TXT o MD.");
         }
+        if (!AllowedContentTypes.Contains(file.ContentType))
+        {
+            throw new InvalidOperationException("Content-Type no permitido para documentos.");
+        }
+    }
+
+    private static string SanitizeFileName(string fileName)
+    {
+        var safeFileName = Path.GetFileName(fileName).Trim();
+
+        foreach (var invalidCharacter in Path.GetInvalidFileNameChars())
+        {
+            safeFileName = safeFileName.Replace(invalidCharacter, '_');
+        }
+
+        return string.IsNullOrWhiteSpace(safeFileName)
+            ? $"document-{Guid.NewGuid():N}.t
     }
 
     private string GetStorageRoot()
