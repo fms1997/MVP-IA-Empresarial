@@ -4,6 +4,7 @@ using LocalMind.Api.Services.Ai;
 using LocalMind.Api.Services.Auth;
 using LocalMind.Api.Services.Chat;
 using LocalMind.Api.Services.Rag;
+using LocalMind.Api.Services.Tools;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -48,7 +49,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IChatService, ChatService>();
-
+builder.Services.AddScoped<IToolIntentDetector, ToolIntentDetector>();
+builder.Services.AddScoped<IAiToolService, AiToolService>();
 builder.Services.Configure<RagOptions>(builder.Configuration.GetSection("Rag"));
 builder.Services.AddScoped<IRagService, RagService>();
 builder.Services.AddScoped<IDocumentTextExtractor, DocumentTextExtractor>();

@@ -28,6 +28,9 @@ export interface ChatMessage {
   content: string;
   createdAt?: string;
     sources?: RagSource[];
+  usedTool?: boolean;
+  toolName?: string | null;
+  route?: string;
 }
 
 export interface SendMessageRequest {
@@ -38,7 +41,10 @@ export interface SendMessageRequest {
 export interface SendMessageResponse {
   conversationId: number;
   response: string;
-   usedRag: boolean;
+    usedRag: boolean;
+  usedTool: boolean;
+  toolName: string | null;
+  route: string;
   chunksUsed: number;
   sources: RagSource[];
 }

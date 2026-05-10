@@ -7,6 +7,11 @@ public class ChatResult
     public string Response { get; set; } = string.Empty;
 
     public bool UsedRag { get; set; }
+    public bool UsedTool { get; set; }
+
+    public string? ToolName { get; set; }
+
+    public string Route { get; set; } = "chat";
 
     public int ChunksUsed { get; set; }
 

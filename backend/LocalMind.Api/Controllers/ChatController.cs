@@ -92,6 +92,9 @@ public class ChatController : ControllerBase
             conversationId = conversation.Id,
             response = chatResult.Response,
             usedRag = chatResult.UsedRag,
+            usedTool = chatResult.UsedTool,
+            toolName = chatResult.ToolName,
+            route = chatResult.Route,
             chunksUsed = chatResult.ChunksUsed,
             sources = chatResult.Sources
         });

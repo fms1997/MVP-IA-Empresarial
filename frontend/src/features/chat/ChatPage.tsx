@@ -165,6 +165,9 @@ export default function ChatPage() {
           role: "assistant",
           content: data.response,
           sources: data.sources,
+          usedTool: data.usedTool,
+          toolName: data.toolName,
+          route: data.route,
         },
       ]);
 
@@ -197,8 +200,8 @@ export default function ChatPage() {
         <header>
           <h1 className="text-xl font-bold">LocalMind AI</h1>
           <p className="text-xs text-slate-400">
-            Chat local con documentos y RAG
-          </p>
+            Chat local con documentos, RAG y tools
+                      </p>
         </header>
 
         <button
@@ -257,6 +260,16 @@ export default function ChatPage() {
                 </article>
               ))
             )}
+          </div>
+        </section>
+ <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-400">
+          <h2 className="mb-2 text-sm font-semibold text-slate-200">Tools</h2>
+          <div className="flex flex-wrap gap-2">
+            {["calculator", "summarizeText", "extractTasks", "generateStudyPlan"].map((tool) => (
+              <span key={tool} className="rounded-full bg-indigo-500/10 px-2 py-1 text-indigo-200">
+                {tool}
+              </span>
+            ))}
           </div>
         </section>
 

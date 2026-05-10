@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("LocalMind.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1a280521384e06cf1a6c1011c4e9d361dd566559")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f534b64ad57bfb5b2eb995f9b561eb436c12f609")]
 [assembly: System.Reflection.AssemblyProductAttribute("LocalMind.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("LocalMind.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
