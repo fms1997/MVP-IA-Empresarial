@@ -58,7 +58,9 @@ public class RagService : IRagService
         Directory.CreateDirectory(vectorStorePath);
 
         var safeOriginalFileName = SanitizeFileName(file.FileName);
-        var extension = Path.GetExtension(safeOriginalFileName).ToLowerInvariant(); var storedFileName = $"{Guid.NewGuid():N}{extension}";
+        //var extension = Path.GetExtension(safeOriginalFileName).ToLowerInvariant(); var storedFileName = $"{Guid.NewGuid():N}{extension}";
+        var extension = Path.GetExtension(safeOriginalFileName).ToLowerInvariant();
+        var storedFileName = $"{Guid.NewGuid():N}{extension}";
         var storedFilePath = Path.Combine(documentsPath, storedFileName);
 
         await using (var output = File.Create(storedFilePath))
@@ -78,7 +80,9 @@ public class RagService : IRagService
         var document = new Document
         {
             UserId = userId,
-            OriginalFileName = Path.GetFileName(file.FileName),
+            //OriginalFileName = Path.GetFileName(file.FileName),
+            OriginalFileName = safeOriginalFileName,
+
             StoredFileName = storedFileName,
             ContentType = file.ContentType,
             SizeBytes = file.Length,
@@ -116,7 +120,8 @@ public class RagService : IRagService
             .Select(document => new DocumentResponse
             {
                 Id = document.Id,
-                OriginalFileName = safeOriginalFileName,
+                //OriginalFileName = safeOriginalFileName,
+                OriginalFileName = document.OriginalFileName,
                 SizeBytes = document.SizeBytes,
                 Status = document.Status,
                 ChunkCount = document.Chunks.Count,
@@ -237,8 +242,11 @@ public class RagService : IRagService
             safeFileName = safeFileName.Replace(invalidCharacter, '_');
         }
 
+        //return string.IsNullOrWhiteSpace(safeFileName)
+        //    ? $"document-{Guid.NewGuid():N}.t
         return string.IsNullOrWhiteSpace(safeFileName)
-            ? $"document-{Guid.NewGuid():N}.t
+    ? $"document-{Guid.NewGuid():N}.txt"
+    : safeFileName;
     }
 
     private string GetStorageRoot()

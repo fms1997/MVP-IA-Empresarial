@@ -42,3 +42,10 @@ docker compose up --build
 ```
 
 Si Ollama está en Docker, descargá los modelos dentro del contenedor o mantené el volumen `ollama-data` persistente.
+
+
+## Validación rápida
+
+```bash
+dotnet build backend/LocalMind.Api/LocalMind.Api.csproj
+npm run build --prefix frontend
