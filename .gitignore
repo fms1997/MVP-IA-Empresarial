@@ -1,9 +1,9 @@
 # Dependencies
-node_modules/
+frontend/node_modules/
 
 # Frontend build artifacts
 frontend/dist/
-frontend/tsconfig.tsbuildinfo
+frontend/*.tsbuildinfo
 
 # .NET build artifacts
 bin/
@@ -16,3 +16,7 @@ obj/
 
 # Logs
 *.log
+
+# Environment variables
+.env
+.env.*
