@@ -85,7 +85,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("Frontend", policy =>
     {
         policy
-            .WithOrigins(allowedOrigins)
+            .WithOrigins(
+                "https://mvp-ia-empresarial.vercel.app",
+                "http://localhost:5173"
+            )
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -127,10 +130,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseMiddleware<ErrorHandlingMiddleware>();
-//app.UseHttpsRedirection();
+
+ //app.UseHttpsRedirection();
 
 app.UseCors("Frontend");
+app.UseMiddleware<ErrorHandlingMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
