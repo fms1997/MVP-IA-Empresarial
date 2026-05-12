@@ -84,6 +84,36 @@ Servicios expuestos:
 
 > Nota: Docker Compose usa `.env` para `JWT_KEY` y el servicio `ollama-init` descarga los modelos automáticamente. Ver comandos completos en `docs/commands.md`.
 
+## Variables de entorno para despliegue
+
+### Backend
+
+En un hosting ASP.NET Core configurá estos valores como variables de entorno:
+
+```env
+ASPNETCORE_ENVIRONMENT=Production
+Jwt__Key=CAMBIAR_POR_UNA_CLAVE_LARGA_SEGURA
+ConnectionStrings__DefaultConnection=Data Source=App_Data/localmind.db
+Rag__StorageRoot=App_Data/rag
+Cors__AllowedOrigins__0=http://localhost:5173
+Cors__AllowedOrigins__1=https://tu-frontend.example.com
+```
+
+`Cors__AllowedOrigins__0` debe apuntar al origen desde donde corre el frontend. Para desarrollo local puede quedar `http://localhost:5173`; para producción agregá la URL real del frontend.
+
+### Frontend
+
+El frontend lee la URL del backend desde `VITE_API_BASE_URL`. Para desarrollo local usá:
+
+```env
+VITE_API_BASE_URL=http://localhost:5201/api
+```
+
+Para producción, por ejemplo con el backend publicado en MonsterASP.NET:
+
+```env
+VITE_API_BASE_URL=https://mvp-ia-backend.runasp.net/api
+```
 ## Seguridad de configuración
 
 La clave `Jwt__Key` debe tratarse como secreto. En Docker Compose se exige definir `JWT_KEY` en un archivo `.env` local basado en `.env.example`; no uses la clave de ejemplo para despliegues reales.
