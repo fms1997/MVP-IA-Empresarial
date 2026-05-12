@@ -76,13 +76,16 @@ builder.Services.AddHttpClient<IOllamaService, OllamaService>(client =>
 
     client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
 });
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? ["http://localhost:5173"];
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5173")
+            .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -125,6 +128,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 app.UseMiddleware<ErrorHandlingMiddleware>();
+//app.UseHttpsRedirection();
+
 app.UseCors("Frontend");
 
 app.UseAuthentication();
