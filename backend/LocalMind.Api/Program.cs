@@ -1,5 +1,4 @@
 using System.Text;
-using Microsoft.AspNetCore.Cors.Infrastructure;
 using LocalMind.Api.Data;
 using LocalMind.Api.Services.Ai;
 using LocalMind.Api.Services.Auth;
@@ -77,17 +76,8 @@ builder.Services.AddHttpClient<IOllamaService, OllamaService>(client =>
 
     client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
 });
-var allowedOrigins = builder.Configuration
-    .GetSection("Cors:AllowedOrigins")
-.Get<string[]>() ?? [];
-
-var normalizedAllowedOrigins = allowedOrigins
-    .Append("https://mvp-ia-empresarial.vercel.app")
-    .Append("http://localhost:5173")
-    .Append("http://localhost:3000")
-    .Select(origin => origin.Trim().TrimEnd('/'))
-    .Where(origin => !string.IsNullOrWhiteSpace(origin))
-    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+ 
+ 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
@@ -102,25 +92,7 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod();
     });
 });
-void BuildFrontendCorsPolicy(CorsPolicyBuilder policy)
-{
-    policy
-        .SetIsOriginAllowed(origin =>
-        {
-            if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
-            {
-                return false;
-            }
-
-            var normalizedOrigin = $"{uri.Scheme}://{uri.Authority}";
-            return normalizedAllowedOrigins.Contains(normalizedOrigin) ||
-                (uri.Scheme == Uri.UriSchemeHttps &&
-                    uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase));
-        })
-        .AllowAnyHeader()
-        .AllowAnyMethod();
-}
-var jwtKey = builder.Configuration["Jwt:Key"]!;
+ var jwtKey = builder.Configuration["Jwt:Key"]!;
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
