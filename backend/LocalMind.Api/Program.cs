@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.AspNetCore.Cors.Infrastructure;
 using LocalMind.Api.Data;
 using LocalMind.Api.Services.Ai;
 using LocalMind.Api.Services.Auth;
@@ -78,22 +79,38 @@ builder.Services.AddHttpClient<IOllamaService, OllamaService>(client =>
 });
 var allowedOrigins = builder.Configuration
     .GetSection("Cors:AllowedOrigins")
-    .Get<string[]>() ?? ["http://localhost:5173"];
+.Get<string[]>() ?? [];
 
+var normalizedAllowedOrigins = allowedOrigins
+    .Append("https://mvp-ia-empresarial.vercel.app")
+    .Append("http://localhost:5173")
+    .Append("http://localhost:3000")
+    .Select(origin => origin.Trim().TrimEnd('/'))
+    .Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .ToHashSet(StringComparer.OrdinalIgnoreCase);
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("Frontend", policy =>
-    {
-        policy
-            .WithOrigins(
-                "https://mvp-ia-empresarial.vercel.app",
-                "http://localhost:5173"
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod();
-    });
+    options.AddDefaultPolicy(BuildFrontendCorsPolicy);
+    options.AddPolicy("Frontend", BuildFrontendCorsPolicy);
 });
+void BuildFrontendCorsPolicy(CorsPolicyBuilder policy)
+{
+    policy
+        .SetIsOriginAllowed(origin =>
+        {
+            if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+            {
+                return false;
+            }
 
+            var normalizedOrigin = $"{uri.Scheme}://{uri.Authority}";
+            return normalizedAllowedOrigins.Contains(normalizedOrigin) ||
+                (uri.Scheme == Uri.UriSchemeHttps &&
+                    uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase));
+        })
+        .AllowAnyHeader()
+        .AllowAnyMethod();
+}
 var jwtKey = builder.Configuration["Jwt:Key"]!;
 
 builder.Services
@@ -131,14 +148,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
- //app.UseHttpsRedirection();
-
+//app.UseHttpsRedirection();
+app.UseRouting();
 app.UseCors("Frontend");
 app.UseMiddleware<ErrorHandlingMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
-
+app.MapControllers().RequireCors("Frontend");
 app.Run();
