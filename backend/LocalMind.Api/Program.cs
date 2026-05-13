@@ -90,8 +90,17 @@ var normalizedAllowedOrigins = allowedOrigins
     .ToHashSet(StringComparer.OrdinalIgnoreCase);
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(BuildFrontendCorsPolicy);
-    options.AddPolicy("Frontend", BuildFrontendCorsPolicy);
+    options.AddPolicy("Frontend", policy =>
+    {
+        policy
+            .WithOrigins(
+                "https://mvp-ia-empresarial.vercel.app",
+                "http://localhost:5173",
+                "http://localhost:3000"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
 });
 void BuildFrontendCorsPolicy(CorsPolicyBuilder policy)
 {
@@ -156,5 +165,5 @@ app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers().RequireCors("Frontend");
+app.MapControllers();
 app.Run();
