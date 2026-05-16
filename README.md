@@ -23,6 +23,7 @@ LocalMind AI es un MVP full stack de asistente IA local para consultar documento
 5. Orquestación simple entre tool, RAG y chat normal.
 6. Panel de métricas con modelo, latencia, tokens aproximados, uso de RAG/tools, chunks y errores.
 7. Seguridad básica: límites de caracteres, validación/sanitización de archivos, JWT y bloqueo básico de prompt injection.
+8. Gestión de documentos: listado con estado, feedback de procesamiento y eliminación de documentos/chunks del índice RAG.
 
 ## Requisitos locales
 
@@ -131,6 +132,10 @@ docs/                       arquitectura, setup y roadmap
 ## Etapa 5 completada
 
 La etapa 5 deja el proyecto presentable como portfolio profesional: métricas visibles, validaciones de seguridad básicas, middleware de errores, documentación de setup/demo, Docker local y Qdrant opcional para búsqueda vectorial.
+
+## Etapa 6 completada
+
+La etapa 6 suma pulido de experiencia y gestión básica de documentos: feedback más claro al subir archivos, estados vacíos más útiles y eliminación segura de documentos con sus chunks para mantener limpio el índice RAG.
 
 ## Comandos rápidos
 

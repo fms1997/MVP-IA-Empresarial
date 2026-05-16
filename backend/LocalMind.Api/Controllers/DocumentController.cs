@@ -46,7 +46,17 @@ public class DocumentsController : ControllerBase
         var documents = await _ragService.GetDocumentsAsync(GetUserId(), cancellationToken);
         return Ok(documents);
     }
+    [HttpDelete("{documentId:int}")]
+    public async Task<IActionResult> DeleteDocument(int documentId, CancellationToken cancellationToken)
+    {
+        var deleted = await _ragService.DeleteDocumentAsync(GetUserId(), documentId, cancellationToken);
+        if (!deleted)
+        {
+            return NotFound(new { message = "No se encontró el documento." });
+        }
 
+        return NoContent();
+    }
     [HttpGet("{documentId:int}/chunks")]
     public async Task<IActionResult> GetChunks(int documentId, CancellationToken cancellationToken)
     {

@@ -10,5 +10,7 @@ public interface IRagService
 
     Task<IReadOnlyList<DocumentChunkResponse>> GetDocumentChunksAsync(int userId, int documentId, CancellationToken cancellationToken = default);
 
+    Task<bool> DeleteDocumentAsync(int userId, int documentId, CancellationToken cancellationToken = default);
+
     Task<RagSearchResult> SearchAsync(int userId, string query, CancellationToken cancellationToken = default);
 }

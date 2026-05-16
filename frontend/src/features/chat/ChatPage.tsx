@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import {
   getConversation,
   getHistory,
@@ -7,16 +8,25 @@ import {
   type ConversationHistoryItem,
 } from "./chatService";
 import {
+  deleteDocument,
   getDocuments,
   uploadDocument,
   type DocumentItem,
 } from "../documents/documentService";
-import axios from "axios";
+
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_FILE_EXTENSIONS = [".pdf", ".txt", ".md"];
-const getChatErrorMessage = (error: unknown) => {
+
+const TOOL_NAMES = [
+  "calculator",
+  "summarizeText",
+  "extractTasks",
+  "generateStudyPlan",
+];
+
+function getRequestErrorMessage(error: unknown, fallback: string) {
   if (!axios.isAxiosError(error)) {
-    return "No se pudo conectar con el backend.";
+    return fallback;
   }
 
   if (!error.response) {
@@ -49,12 +59,17 @@ const getChatErrorMessage = (error: unknown) => {
     }
   }
 
-  return "No se pudo procesar el mensaje.";
-};
+  return fallback;
+}
 
 function formatFileSize(sizeBytes: number) {
-  if (sizeBytes < 1024) return `${sizeBytes} B`;
-  if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  if (sizeBytes < 1024) {
+    return `${sizeBytes} B`;
+  }
+
+  if (sizeBytes < 1024 * 1024) {
+    return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  }
 
   return `${(sizeBytes / 1024 / 1024).toFixed(1)} MB`;
 }
@@ -67,6 +82,16 @@ function isAcceptedFile(file: File) {
   );
 }
 
+function getDocumentsSubtitle(documentsCount: number) {
+  if (documentsCount === 0) {
+    return "PDF, TXT o MD para consultar";
+  }
+
+  return `${documentsCount} documento${documentsCount === 1 ? "" : "s"} indexado${
+    documentsCount === 1 ? "" : "s"
+  }`;
+}
+
 export default function ChatPage() {
   const [message, setMessage] = useState("");
   const [conversationId, setConversationId] = useState<number | null>(null);
@@ -77,23 +102,17 @@ export default function ChatPage() {
 
   const [isSending, setIsSending] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [deletingDocumentId, setDeletingDocumentId] = useState<number | null>(
+    null
+  );
 
   const [chatError, setChatError] = useState<string | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [documentError, setDocumentError] = useState<string | null>(null);
+  const [documentNotice, setDocumentNotice] = useState<string | null>(null);
 
   const canSendMessage = useMemo(() => {
     return message.trim().length > 0 && !isSending;
   }, [message, isSending]);
-
-  const loadInitialData = async () => {
-    const [historyData, documentsData] = await Promise.all([
-      getHistory(),
-      getDocuments(),
-    ]);
-
-    setHistory(historyData);
-    setDocuments(documentsData);
-  };
 
   const loadHistory = async () => {
     const data = await getHistory();
@@ -105,12 +124,27 @@ export default function ChatPage() {
     setDocuments(data);
   };
 
+  const loadInitialData = async () => {
+    const [historyData, documentsData] = await Promise.all([
+      getHistory(),
+      getDocuments(),
+    ]);
+
+    setHistory(historyData);
+    setDocuments(documentsData);
+  };
+
   useEffect(() => {
     loadInitialData().catch((error) => {
       console.error("Error cargando datos iniciales:", error);
       setChatError("No se pudieron cargar el historial y los documentos.");
     });
   }, []);
+
+  const clearDocumentMessages = () => {
+    setDocumentError(null);
+    setDocumentNotice(null);
+  };
 
   const handleNewConversation = () => {
     setConversationId(null);
@@ -142,37 +176,82 @@ export default function ChatPage() {
     const file = event.target.files?.[0];
     event.target.value = "";
 
-    if (!file || isUploading) return;
+    if (!file || isUploading) {
+      return;
+    }
 
-    setUploadError(null);
+    clearDocumentMessages();
 
     if (!isAcceptedFile(file)) {
-      setUploadError("Formato inválido. Subí un archivo PDF, TXT o MD.");
+      setDocumentError("Formato inválido. Subí un archivo PDF, TXT o MD.");
       return;
     }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      setUploadError("El archivo supera el límite de 10 MB.");
+      setDocumentError("El archivo supera el límite de 10 MB.");
       return;
     }
 
     setIsUploading(true);
 
     try {
-      await uploadDocument(file);
+      const uploadedDocument = await uploadDocument(file);
+
       await loadDocuments();
+
+      setDocumentNotice(
+        `Documento "${uploadedDocument.originalFileName}" procesado con ${uploadedDocument.chunkCount} chunks.`
+      );
     } catch (error) {
       console.error("Error subiendo documento:", error);
-      setUploadError("No se pudo procesar el documento.");
+      setDocumentError(
+        getRequestErrorMessage(error, "No se pudo procesar el documento.")
+      );
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleDeleteDocument = async (document: DocumentItem) => {
+    if (deletingDocumentId !== null) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `¿Eliminar "${document.originalFileName}" y sus chunks del índice RAG?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    clearDocumentMessages();
+    setDeletingDocumentId(document.id);
+
+    try {
+      await deleteDocument(document.id);
+
+      setDocuments((currentDocuments) =>
+        currentDocuments.filter((item) => item.id !== document.id)
+      );
+
+      setDocumentNotice(`Documento "${document.originalFileName}" eliminado.`);
+    } catch (error) {
+      console.error("Error eliminando documento:", error);
+      setDocumentError(
+        getRequestErrorMessage(error, "No se pudo eliminar el documento.")
+      );
+    } finally {
+      setDeletingDocumentId(null);
     }
   };
 
   const handleSend = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!canSendMessage) return;
+    if (!canSendMessage) {
+      return;
+    }
 
     const userMessage = message.trim();
 
@@ -211,13 +290,18 @@ export default function ChatPage() {
       await loadHistory();
     } catch (error) {
       console.error("Error enviando mensaje:", error);
- const errorMessage = getChatErrorMessage(error);
+
+      const errorMessage = getRequestErrorMessage(
+        error,
+        "No se pudo procesar el mensaje."
+      );
+
       setChatError(errorMessage);
       setMessages((previousMessages) => [
         ...previousMessages,
         {
           role: "assistant",
-                   content: errorMessage,
+          content: errorMessage,
         },
       ]);
     } finally {
@@ -238,7 +322,7 @@ export default function ChatPage() {
           <h1 className="text-xl font-bold">LocalMind AI</h1>
           <p className="text-xs text-slate-400">
             Chat local con documentos, RAG y tools
-                      </p>
+          </p>
         </header>
 
         <button
@@ -254,7 +338,7 @@ export default function ChatPage() {
             <div>
               <h2 className="text-sm font-semibold">Documentos</h2>
               <p className="text-xs text-slate-500">
-                PDF, TXT o MD para consultar
+                {getDocumentsSubtitle(documents.length)}
               </p>
             </div>
 
@@ -262,7 +346,7 @@ export default function ChatPage() {
               {isUploading ? "Procesando..." : "Subir"}
               <input
                 type="file"
-                accept=".pdf,.txt,.md,text/plain,application/pdf"
+                accept=".pdf,.txt,.md,text/plain,application/pdf,text/markdown"
                 onChange={handleUpload}
                 disabled={isUploading}
                 className="hidden"
@@ -270,40 +354,76 @@ export default function ChatPage() {
             </label>
           </div>
 
-          {uploadError && (
+          {documentError && (
             <p className="mb-2 rounded border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-300">
-              {uploadError}
+              {documentError}
             </p>
           )}
 
-          <div className="max-h-48 space-y-2 overflow-y-auto">
+          {documentNotice && (
+            <p className="mb-2 rounded border border-emerald-500/40 bg-emerald-500/10 p-2 text-xs text-emerald-200">
+              {documentNotice}
+            </p>
+          )}
+
+          <div className="max-h-52 space-y-2 overflow-y-auto">
             {documents.length === 0 ? (
-              <p className="text-xs text-slate-500">
-                Todavía no subiste documentos.
-              </p>
+              <div className="rounded-lg border border-dashed border-slate-700 p-3 text-xs text-slate-500">
+                <p>Todavía no subiste documentos.</p>
+                <p className="mt-1">
+                  Subí uno para activar respuestas con fuentes RAG.
+                </p>
+              </div>
             ) : (
-              documents.map((document) => (
-                <article
-                  key={document.id}
-                  className="rounded-lg bg-slate-800 p-2 text-xs"
-                >
-                  <p className="truncate font-medium">
-                    {document.originalFileName}
-                  </p>
-                  <p className="text-slate-400">
-                    {document.chunkCount} chunks ·{" "}
-                    {formatFileSize(document.sizeBytes)}
-                  </p>
-                </article>
-              ))
+              documents.map((document) => {
+                const isDeleting = deletingDocumentId === document.id;
+
+                return (
+                  <article
+                    key={document.id}
+                    className="rounded-lg bg-slate-800 p-2 text-xs"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">
+                          {document.originalFileName}
+                        </p>
+
+                        <p className="text-slate-400">
+                          {document.chunkCount} chunks ·{" "}
+                          {formatFileSize(document.sizeBytes)}
+                        </p>
+
+                        <p className="text-slate-500">
+                          Estado: {document.status}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDocument(document)}
+                        disabled={isDeleting}
+                        className="rounded border border-red-500/40 px-2 py-1 text-red-200 hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isDeleting ? "..." : "Eliminar"}
+                      </button>
+                    </div>
+                  </article>
+                );
+              })
             )}
           </div>
         </section>
- <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-400">
+
+        <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-400">
           <h2 className="mb-2 text-sm font-semibold text-slate-200">Tools</h2>
+
           <div className="flex flex-wrap gap-2">
-            {["calculator", "summarizeText", "extractTasks", "generateStudyPlan"].map((tool) => (
-              <span key={tool} className="rounded-full bg-indigo-500/10 px-2 py-1 text-indigo-200">
+            {TOOL_NAMES.map((tool) => (
+              <span
+                key={tool}
+                className="rounded-full bg-indigo-500/10 px-2 py-1 text-indigo-200"
+              >
                 {tool}
               </span>
             ))}
@@ -369,9 +489,7 @@ export default function ChatPage() {
               <article
                 key={`${item.role}-${item.createdAt ?? index}`}
                 className={`max-w-3xl rounded-2xl p-3 whitespace-pre-wrap ${
-                  isUserMessage
-                    ? "ml-auto bg-blue-600"
-                    : "mr-auto bg-slate-800"
+                  isUserMessage ? "ml-auto bg-blue-600" : "mr-auto bg-slate-800"
                 }`}
               >
                 <p>{item.content}</p>
@@ -391,6 +509,7 @@ export default function ChatPage() {
                           {source.fileName} · chunk {source.chunkIndex} · score{" "}
                           {source.score.toFixed(2)}
                         </p>
+
                         <p className="mt-1 text-slate-400">
                           {source.preview}
                         </p>

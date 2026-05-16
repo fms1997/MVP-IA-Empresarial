@@ -10,12 +10,12 @@
 - Métricas.
 - Seguridad básica.
 - Docker local y documentación.
-
+- Gestión básica de documentos: feedback de carga y eliminación de documentos/chunks del índice RAG.
 ## Próximos pasos
 
 - Búsqueda vectorial con ChromaDB o Qdrant local.
 - Streaming de respuestas.
-- Eliminación y reprocesamiento de documentos.
+- Reprocesamiento de documentos.
 - Exportación de conversaciones.
 - Tests automatizados de backend y frontend.
 - Evaluaciones RAG pequeñas.

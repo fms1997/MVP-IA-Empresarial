@@ -136,6 +136,6 @@ app.UseMiddleware<ErrorHandlingMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
+app.MapGet("/version", () => "VERSION NUEVA");
 app.MapControllers();
 app.Run();
